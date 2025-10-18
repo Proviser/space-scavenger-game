@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Space Scavenger</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <style>
+        /* ========== CSS RESET И БАЗОВЫЕ СТИЛИ ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-text-size-adjust: none;
+            text-size-adjust: none;
+        }
+
+        html {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a2a 0%, #1a1a4a 50%, #2a2a6a 100%);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* ========== АДАПТИВНАЯ СЕТКА ========== */
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-height: 100vh;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            position: relative;
+        }
+
+        /* ========== ЗАГОЛОВОК ========== */
+        .header {
+            padding: clamp(8px, 2vh, 20px) clamp(10px, 3vw, 20px);
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .game-title {
+            font-size: clamp(1.5rem, 6vw, 2.5rem);
+            font-weight: 900;
+            margin-bottom: clamp(4px, 1vh, 8px);
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: clamp(1px, 0.5vw, 2px);
+            line-height: 1.1;
+        }
+
+        .game-subtitle {
+            font-size: clamp(0.75rem, 3vw, 1rem);
+            opacity: 0.8;
+            font-weight: 400;
+        }
+
+        /* ========== СТАТИСТИКА ========== */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: clamp(8px, 2vw, 12px);
+            padding: clamp(10px, 2vh, 15px) clamp(12px, 3vw, 20px);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            margin: 0 clamp(10px, 3vw, 20px);
+            border-radius: clamp(12px, 3vw, 16px);
+            flex-shrink: 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: clamp(6px, 1.5vh, 10px);
+        }
+
+        .stat-label {
+            font-size: clamp(0.65rem, 2.5vw, 0.8rem);
+            opacity: 0.7;
+            margin-bottom: clamp(2px, 0.5vh, 4px);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: clamp(1.2rem, 5vw, 1.6rem);
+            font-weight: 800;
+            color: #4ecdc4;
+            text-shadow: 0 0 clamp(8px, 2vw, 12px) rgba(78, 205, 196, 0.4);
+            line-height: 1;
+        }
+
+        /* ========== ИГРОВОЕ ПОЛЕ ========== */
+        .game-area {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: clamp(8px, 2vh, 15px);
+            min-height: 0;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            border: clamp(3px, 1vw, 4px) solid;
+            border-image: linear-gradient(45deg, #ff6b6b, #4ecdc4) 1;
+            border-radius: clamp(10px, 3vw, 14px);
+            box-shadow: 
+                0 0 clamp(20px, 6vw, 40px) rgba(78, 205, 196, 0.25),
+                inset 0 0 clamp(15px, 4vw, 30px) rgba(0, 0, 0, 0.4);
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(42, 42, 106, 0.9) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 107, 107, 0.3) 0%, transparent 50%),
+                #0a0a2a;
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+
+        /* ========== УПРАВЛЕНИЕ ========== */
+        .controls-section {
+            padding: clamp(12px, 3vh, 20px) clamp(10px, 3vw, 20px);
+            flex-shrink: 0;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: clamp(8px, 2vw, 12px);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .control-btn {
+            padding: clamp(12px, 3vh, 16px) clamp(8px, 2vw, 12px);
+            font-size: clamp(1rem, 4vw, 1.2rem);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: clamp(10px, 3vw, 14px);
+            color: white;
+            cursor: pointer;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 clamp(2px, 0.5vh, 4px) clamp(8px, 2vw, 15px) rgba(102, 126, 234, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            user-select: none;
+            touch-action: manipulation;
+            min-height: clamp(44px, 10vh, 60px);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s;
+        }
+
+        .control-btn:active::before {
+            left: 100%;
+        }
+
+        .control-btn:active {
+            transform: scale(0.94);
+            box-shadow: 
+                0 1px 3px rgba(102, 126, 234, 0.4),
+                inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .control-btn.held {
+            transform: scale(0.92);
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            box-shadow: 
+                0 1px 2px rgba(102, 126, 234, 0.5),
+                inset 0 3px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            box-shadow: 
+                0 clamp(2px, 0.5vh, 4px) clamp(8px, 2vw, 15px) rgba(78, 205, 196, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .start-btn:active {
+            box-shadow: 
+                0 1px 3px rgba(78, 205, 196, 0.4),
+                inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* ========== ИНДИКАТОРЫ ========== */
+        .powerup-indicator {
+            position: absolute;
+            top: clamp(8px, 2vh, 12px);
+            right: clamp(8px, 2vw, 12px);
+            background: rgba(255, 255, 255, 0.12);
+            padding: clamp(6px, 1.5vh, 8px) clamp(8px, 2vw, 12px);
+            border-radius: clamp(8px, 2vw, 12px);
+            font-size: clamp(0.7rem, 2.5vw, 0.8rem);
+            display: none;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 10;
+            font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .boss-health {
+            position: absolute;
+            top: clamp(8px, 2vh, 12px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(60%, 200px);
+            height: clamp(6px, 1.5vh, 8px);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: clamp(4px, 1vw, 6px);
+            overflow: hidden;
+            display: none;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .boss-health-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
+            border-radius: inherit;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 clamp(6px, 2vw, 10px) rgba(255, 107, 107, 0.4);
+        }
+
+        /* ========== GAME OVER ========== */
+        .game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 42, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: clamp(20px, 5vh, 40px);
+            text-align: center;
+        }
+
+        .game-over-content {
+            background: linear-gradient(135deg, rgba(26, 26, 74, 0.95), rgba(42, 42, 106, 0.95));
+            padding: clamp(20px, 5vh, 30px);
+            border-radius: clamp(16px, 4vw, 20px);
+            border: 2px solid #4ecdc4;
+            box-shadow: 0 0 clamp(30px, 8vw, 50px) rgba(78, 205, 196, 0.3);
+            max-width: min(90%, 350px);
+            width: 100%;
+        }
+
+        .game-over h2 {
+            font-size: clamp(1.5rem, 6vw, 2.2rem);
+            margin-bottom: clamp(12px, 3vh, 20px);
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+        }
+
+        .game-over-stats {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(8px, 2vh, 12px);
+            margin-bottom: clamp(16px, 4vh, 24px);
+        }
+
+        .game-over-stat {
+            display: flex;
+            justify-content: space-between;
+            font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+        }
+
+        .restart-btn {
+            padding: clamp(12px, 3vh, 16px) clamp(24px, 6vw, 32px);
+            font-size: clamp(1rem, 4vw, 1.2rem);
+            background: linear-gradient(135deg, #ffd93d, #ff9a3d);
+            border: none;
+            border-radius: clamp(12px, 3vw, 16px);
+            color: white;
+            cursor: pointer;
+            font-weight: 700;
+            box-shadow: 0 clamp(2px, 0.5vh, 4px) clamp(12px, 3vw, 20px) rgba(255, 217, 61, 0.3);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+            touch-action: manipulation;
+        }
+
+        .restart-btn:active {
+            transform: scale(0.96);
+            box-shadow: 0 1px 4px rgba(255, 217, 61, 0.4);
+        }
+
+        /* ========== АДАПТИВНОСТЬ ДЛЯ РАЗНЫХ УСТРОЙСТВ ========== */
+        /* Вертикальная ориентация */
+        @media (max-aspect-ratio: 3/4) {
+            .game-container {
+                padding-top: max(env(safe-area-inset-top), 8px);
+            }
+            
+            .header {
+                padding-top: clamp(4px, 1vh, 10px);
+                padding-bottom: clamp(4px, 1vh, 10px);
+            }
+            
+            .stats-container {
+                margin: 0 clamp(8px, 2vw, 15px);
+                padding: clamp(8px, 1.5vh, 12px) clamp(10px, 2vw, 15px);
+            }
+            
+            .game-area {
+                padding: clamp(4px, 1vh, 8px);
+            }
+            
+            .controls-section {
+                padding: clamp(8px, 2vh, 15px) clamp(8px, 2vw, 15px);
+            }
+        }
+
+        /* Горизонтальная ориентация */
+        @media (min-aspect-ratio: 4/3) {
+            .game-container {
+                flex-direction: row;
+                padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            }
+            
+            .header {
+                display: none;
+            }
+            
+            .stats-container {
+                grid-template-columns: 1fr;
+                margin: clamp(10px, 2vh, 15px);
+                width: min(25%, 120px);
+            }
+            
+            .game-area {
+                flex: 1;
+                order: 2;
+            }
+            
+            .controls-section {
+                order: 3;
+                width: min(25%, 120px);
+                padding: clamp(10px, 2vh, 15px);
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr auto 1fr;
+            }
+        }
+
+        /* Очень маленькие экраны */
+        @media (max-height: 500px) {
+            .header {
+                display: none;
+            }
+            
+            .stats-container {
+                padding: 6px 10px;
+            }
+            
+            .stat-value {
+                font-size: 1rem;
+            }
+            
+            .controls-section {
+                padding: 8px 10px;
+            }
+        }
+
+        /* Большие экраны */
+        @media (min-width: 768px) and (min-height: 1024px) {
+            .game-container {
+                max-width: 768px;
+                margin: 0 auto;
+            }
+        }
+
+        /* Поддержка темной темы */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: linear-gradient(135deg, #0a0a2a 0%, #1a1a4a 50%, #2a2a6a 100%);
+            }
+        }
+
+        /* Анимации загрузки */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .game-over-content {
+            animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Улучшенная доступность */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Подсветка фокуса для доступности */
+        .control-btn:focus-visible,
+        .restart-btn:focus-visible {
+            outline: 2px solid #4ecdc4;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Заголовок -->
+        <div class="header">
+            <h1 class="game-title">🚀 SPACE SCAVENGER</h1>
+            <p class="game-subtitle">Destroy debris, collect powerups, defeat bosses!</p>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats-container">
+            <div class="stat-item">
+                <div class="stat-label">Score</div>
+                <div class="stat-value" id="score">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Level</div>
+                <div class="stat-value" id="level">1</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Bricks</div>
+                <div class="stat-value" id="bricks">40</div>
+            </div>
+        </div>
+
+        <!-- Игровая область -->
+        <div class="game-area">
+            <div class="canvas-wrapper">
+                <canvas id="gameCanvas"></canvas>
+                
+                <!-- Индикатор бустера -->
+                <div class="powerup-indicator" id="powerupIndicator">
+                    <span id="powerupText">Powerup Active</span>
+                </div>
+                
+                <!-- Полоска здоровья босса -->
+                <div class="boss-health" id="bossHealth">
+                    <div class="boss-health-bar" id="bossHealthBar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Управление -->
+        <div class="controls-section">
+            <div class="controls-grid">
+                <button class="control-btn" id="leftBtn" aria-label="Move left">
+                    ⬅️ LEFT
+                </button>
+                <button class="control-btn start-btn" id="startBtn" aria-label="Start ball">
+                    🚀 START
+                </button>
+                <button class="control-btn" id="rightBtn" aria-label="Move right">
+                    ➡️ RIGHT
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Over -->
+        <div class="game-over" id="gameOver" role="dialog" aria-labelledby="gameOverTitle">
+            <div class="game-over-content">
+                <h2 id="gameOverTitle">🎮 MISSION FAILED</h2>
+                <div class="game-over-stats">
+                    <div class="game-over-stat">
+                        <span>Final Score:</span>
+                        <span id="finalScore">0</span>
+                    </div>
+                    <div class="game-over-stat">
+                        <span>Level Reached:</span>
+                        <span id="finalLevel">1</span>
+                    </div>
+                    <div class="game-over-stat">
+                        <span>High Score:</span>
+                        <span id="highScore">0</span>
+                    </div>
+                </div>
+                <button class="restart-btn" id="restartBtn" aria-label="Start new mission">
+                    🔄 NEW MISSION
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== АДАПТИВНАЯ ИНИЦИАЛИЗАЦИЯ CANVAS ==========
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+        
+        // Функция для адаптивного размера canvas
+        function setupCanvas() {
+            const wrapper = canvas.parentElement;
+            const rect = wrapper.getBoundingClientRect();
+            
+            // Устанавливаем размеры с учетом плотности пикселей
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const width = Math.floor(rect.width);
+            const height = Math.floor(rect.height);
+            
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            
+            // Масштабируем контекст
+            ctx.scale(dpr, dpr);
+            ctx.imageSmoothingEnabled = false;
+            
+            return { width, height, dpr };
+        }
+
+        // ========== КОНФИГУРАЦИЯ С УЧЕТОМ РАЗМЕРА ЭКРАНА ==========
+        function getConfig() {
+            const baseSize = Math.min(window.innerWidth, window.innerHeight);
+            const scale = baseSize / 800; // Базовый размер для расчета
+            
+            return {
+                platform: {
+                    baseSpeed: Math.floor(12 * scale),
+                    boostedSpeed: Math.floor(18 * scale),
+                    width: Math.floor(80 * scale),
+                    height: Math.floor(15 * scale)
+                },
+                ball: {
+                    baseSpeed: 5 * scale,
+                    maxSpeed: 8 * scale,
+                    radius: Math.floor(8 * scale)
+                },
+                powerups: {
+                    spawnChance: 0.2,
+                    types: ['speed', 'large', 'multiball', 'laser'],
+                    duration: {
+                        speed: 10000,
+                        large: 8000,
+                        laser: 5000
+                    }
+                },
+                boss: {
+                    health: 150,
+                    spawnEvery: 3
+                }
+            };
+        }
+
+        let CONFIG = getConfig();
+        let canvasSize = { width: 400, height: 500 };
+
+        // ========== ПЕРЕМЕННЫЕ ИГРЫ ==========
+        let score = 0;
+        let level = 1;
+        let gameOver = false;
+        let ballMoving = false;
+        let animationId;
+        let highScore = localStorage.getItem('spaceScavengerHighScore') || 0;
+        let activePowerups = new Map();
+        let bossActive = false;
+        let bossHealth = CONFIG.boss.health;
+        let particles = [];
+
+        // ========== АДАПТИВНЫЕ ИГРОВЫЕ ОБЪЕКТЫ ==========
+        let platform = {
+            get x() { return this._x; },
+            set x(value) { this._x = Math.max(0, Math.min(canvasSize.width - this.width, value)); },
+            get width() {
+                return activePowerups.has('large') ? CONFIG.platform.width * 1.5 : CONFIG.platform.width;
+            },
+            get speed() {
+                return activePowerups.has('speed') ? CONFIG.platform.boostedSpeed : CONFIG.platform.baseSpeed;
+            },
+            height: CONFIG.platform.height,
+            y: 0 // Будет установлено после инициализации canvas
+        };
+
+        let ball = {
+            x: 0,
+            y: 0,
+            radius: CONFIG.ball.radius,
+            dx: CONFIG.ball.baseSpeed,
+            dy: -CONFIG.ball.baseSpeed,
+            get speed() {
+                const base = activePowerups.has('speed') ? CONFIG.ball.maxSpeed : CONFIG.ball.baseSpeed;
+                return base + (level - 1) * 0.3;
+            }
+        };
+
+        let bricks = [];
+        let powerups = [];
+        let balls = [ball];
+
+        // ========== СИСТЕМА УПРАВЛЕНИЯ С ПРЕДОТВРАЩЕНИЕМ ЛАГОВ ==========
+        class InputManager {
+            constructor() {
+                this.keys = {};
+                this.activeTouches = new Set();
+                this.setupEventListeners();
+            }
+            
+            setupEventListeners() {
+                // Клавиатура - используем keydown/keyup для мгновенного отклика
+                document.addEventListener('keydown', (e) => {
+                    if (['ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+                        e.preventDefault();
+                        if (!this.keys[e.key]) {
+                            this.keys[e.key] = true;
+                            this.updateButtonState();
+                        }
+                    }
+                }, { passive: false });
+                
+                document.addEventListener('keyup', (e) => {
+                    if (['ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+                        this.keys[e.key] = false;
+                        this.updateButtonState();
+                    }
+                });
+                
+                // Сенсорное управление с предотвращением лагов
+                this.setupTouchControls();
+                
+                // Мышь
+                this.setupMouseControls();
+            }
+            
+            setupTouchControls() {
+                const leftBtn = document.getElementById('leftBtn');
+                const rightBtn = document.getElementById('rightBtn');
+                const startBtn = document.getElementById('startBtn');
+                
+                const handleTouchStart = (btn, key) => (e) => {
+                    e.preventDefault();
+                    const touch = e.changedTouches[0];
+                    this.activeTouches.add(touch.identifier);
+                    this.keys[key] = true;
+                    btn.classList.add('held');
+                };
+                
+                const handleTouchEnd = (btn, key) => (e) => {
+                    e.preventDefault();
+                    const touch = e.changedTouches[0];
+                    this.activeTouches.delete(touch.identifier);
+                    this.keys[key] = false;
+                    btn.classList.remove('held');
+                };
+                
+                leftBtn.addEventListener('touchstart', handleTouchStart(leftBtn, 'ArrowLeft'), { passive: false });
+                leftBtn.addEventListener('touchend', handleTouchEnd(leftBtn, 'ArrowLeft'), { passive: false });
+                leftBtn.addEventListener('touchcancel', handleTouchEnd(leftBtn, 'ArrowLeft'), { passive: false });
+                
+                rightBtn.addEventListener('touchstart', handleTouchStart(rightBtn, 'ArrowRight'), { passive: false });
+                rightBtn.addEventListener('touchend', handleTouchEnd(rightBtn, 'ArrowRight'), { passive: false });
+                rightBtn.addEventListener('touchcancel', handleTouchEnd(rightBtn, 'ArrowRight'), { passive: false });
+                
+                startBtn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    startBall();
+                }, { passive: false });
+                
+                // Свайпы по всему экрану
+                let touchStartX = 0;
+                document.addEventListener('touchstart', (e) => {
+                    touchStartX = e.touches[0].clientX;
+                }, { passive: true });
+                
+                document.addEventListener('touchmove', (e) => {
+                    const touchX = e.touches[0].clientX;
+                    const diff = touchX - touchStartX;
+                    
+                    if (Math.abs(diff) > 10) {
+                        this.keys['ArrowLeft'] = diff < 0;
+                        this.keys['ArrowRight'] = diff > 0;
+                        this.updateButtonState();
+                        touchStartX = touchX;
+                    }
+                }, { passive: true });
+                
+                document.addEventListener('touchend', () => {
+                    this.keys['ArrowLeft'] = false;
+                    this.keys['ArrowRight'] = false;
+                    this.updateButtonState();
+                });
+            }
+            
+            setupMouseControls() {
+                const leftBtn = document.getElementById('leftBtn');
+                const rightBtn = document.getElementById('rightBtn');
+                
+                const handleMouseDown = (btn, key) => (e) => {
+                    e.preventDefault();
+                    this.keys[key] = true;
+                    btn.classList.add('held');
+                };
+                
+                const handleMouseUp = (btn, key) => () => {
+                    this.keys[key] = false;
+                    btn.classList.remove('held');
+                };
+                
+                leftBtn.addEventListener('mousedown', handleMouseDown(leftBtn, 'ArrowLeft'));
+                document.addEventListener('mouseup', handleMouseUp(leftBtn, 'ArrowLeft'));
+                leftBtn.addEventListener('mouseleave', handleMouseUp(leftBtn, 'ArrowLeft'));
+                
+                rightBtn.addEventListener('mousedown', handleMouseDown(rightBtn, 'ArrowRight'));
+                document.addEventListener('mouseup', handleMouseUp(rightBtn, 'ArrowRight'));
+                rightBtn.addEventListener('mouseleave', handleMouseUp(rightBtn, 'ArrowRight'));
+            }
+            
+            updateButtonState() {
+                const leftBtn = document.getElementById('leftBtn');
+                const rightBtn = document.getElementById('rightBtn');
+                
+                leftBtn.classList.toggle('held', this.keys['ArrowLeft']);
+                rightBtn.classList.toggle('held', this.keys['ArrowRight']);
+            }
+            
+            isKeyPressed(key) {
+                return this.keys[key] === true;
+            }
+        }
+
+        const input = new InputManager();
+
+        // ОСТАЛЬНЫЙ КОД ИГРЫ (GameLoop, бустеры, боссы и т.д.) 
+        // остается таким же как в предыдущей версии, но с использованием
+        // адаптивных CONFIG и canvasSize
+        
+        // ========== АДАПТИВНАЯ ИНИЦИАЛИЗАЦИЯ ==========
+        function initGame() {
+            // Настраиваем canvas
+            canvasSize = setupCanvas();
+            CONFIG = getConfig();
+            
+            // Инициализируем позиции с учетом нового размера
+            platform.y = canvasSize.height - 30;
+            platform.x = canvasSize.width / 2 - CONFIG.platform.width / 2;
+            
+            ball.x = canvasSize.width / 2;
+            ball.y = canvasSize.height - 50;
+            
+            // Генерируем уровень
+            generateBricks();
+            updateHighScoreDisplay();
+            
+            // Первая отрисовка
+            gameLoop.render();
+        }
+
+        // ========== ПЕРЕЗАПУСК ПРИ ИЗМЕНЕНИИ РАЗМЕРА ==========
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (!gameOver) {
+                    initGame();
+                }
+            }, 250);
+        });
+
+        // Запускаем игру
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
